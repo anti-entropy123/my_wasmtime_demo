@@ -38,14 +38,13 @@ func getFdRead(
 		),
 		func(caller *wasmtime.Caller, params []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdRead!")
-			fmt.Println("params is: ", params[0].I32(), params[1].I32(), params[2].I32(), params[3].I32())
 			fd := utils.GetFdHandle(params[0].I32())
 			iovsCnt := params[2].I32()
 			fmt.Println("iovsCnt is:", iovsCnt)
 			memory := caller.GetExport("memory").Memory()
 			baseAddr := memory.Data(store)
 			iovsSH := &reflect.SliceHeader{
-				Data: uintptr(params[1].I32()) + uintptr(baseAddr),
+				Data: uintptr(utils.AddrOffset(baseAddr, params[1].I32())),
 				Len:  int(iovsCnt),
 				Cap:  int(iovsCnt),
 			}
@@ -68,21 +67,22 @@ func getFdRead(
 				fmt.Printf("data Addr is %#08x\n", dataAddr)
 				dataSH := &reflect.SliceHeader{
 					Data: dataAddr,
-					Len:  0,
+					Len:  int(iovec.Len),
 					Cap:  int(iovec.Len),
 				}
 				data := *(*[]byte)(unsafe.Pointer(dataSH))
-				right := index + int(iovec.Len)
-				if right > len(buf) {
-					right = len(buf)
-				}
-				data = append(data, buf[index:right]...)
+				right := utils.MinInt(index+int(iovec.Len), n)
+				fmt.Println("right", right, index+int(iovec.Len), n)
+				// data = append(data, buf[index:right]...)
+				for j := index; j < right; j ++ {
+					data[j-index] = buf[j]
+				} 
 				index += int(iovec.Len)
 				runtime.KeepAlive(dataSH)
 				fmt.Println("content is", data)
 			}
-			*(*int)(unsafe.Pointer(uintptr(baseAddr) + uintptr(params[3].I32()))) = n
-			fmt.Println("ret cnt ", *(*int)(unsafe.Pointer(uintptr(baseAddr) + uintptr(params[3].I32()))))
+			*(*int)(utils.AddrOffset(baseAddr, params[3].I32())) = n
+			fmt.Println("ret cnt ", *(*int)(utils.AddrOffset(baseAddr, params[3].I32())))
 			return []wasmtime.Val{wasmtime.ValI32(int32(n))}, nil
 		},
 	)
@@ -150,23 +150,26 @@ func getFdWrite(store wasmtime.Storelike) *wasmtime.Func {
 			memory := caller.GetExport("memory").Memory()
 			baseAddr := memory.Data(store)
 			iovsSH := &reflect.SliceHeader{
-				Data: uintptr(params[1].I32()) + uintptr(baseAddr),
+				Data: uintptr(utils.AddrOffset(baseAddr, params[1].I32())),
 				Len:  int(iovsCnt),
 				Cap:  int(iovsCnt),
 			}
 			iovsList := *(*[]Iovec)(unsafe.Pointer(iovsSH))
 			data := []byte{}
 			for _, iovs := range iovsList {
+				fmt.Println("write iovs: ", iovs)
 				if !(iovs.Len > 0) {
 					continue
 				}
-				dataPtr := uintptr(baseAddr) + uintptr(iovs.Base)
+				dataPtr := utils.AddrOffset(baseAddr, iovs.Base)
 				sh := &reflect.SliceHeader{
-					Data: dataPtr,
+					Data: uintptr(dataPtr),
 					Len:  int(iovs.Len),
 					Cap:  int(iovs.Len),
 				}
+				fmt.Println("part length: ", sh.Len)
 				part := *(*[]byte)(unsafe.Pointer(sh))
+				fmt.Printf("part is *%s*\n", part)
 				data = append(data, part...)
 			}
 			n, err := syscall.Write(fd, data)
