@@ -27,7 +27,7 @@ func LinkWasi(filename string) {
 	// Configure WASI imports to write stdout into a file, and then create
 	// a `Store` using this wasi configuration.
 	wasiConfig := wasmtime.NewWasiConfig()
-	wasiConfig.SetStdoutFile(outFile)
+	// wasiConfig.SetStdoutFile(outFile)
 	store := wasmtime.NewStore(engine)
 	store.SetWasi(wasiConfig)
 	instance, err := linker.Instantiate(store, module)
@@ -36,7 +36,7 @@ func LinkWasi(filename string) {
 	// Run the function
 	nom := instance.GetExport(store, "_start").Func()
 	_, err = nom.Call(store)
-	fmt.Println(err)
+	fmt.Println("run link_wasi fail, err=", err)
 	// utils.Check(err)
 	out, err := ioutil.ReadFile(outFile)
 	utils.Check(err)

@@ -9,7 +9,11 @@ import (
 )
 
 func Load(filename string) {
-	store := wasmtime.NewStore(wasmtime.NewEngine())
+	engine := wasmtime.NewEngine()
+	wasiConfig := wasmtime.NewWasiConfig()
+	wasiConfig.PreopenDir(".", "/")
+	store := wasmtime.NewStore(engine)
+	store.SetWasi(wasiConfig)
 	module, err := wasmtime.NewModuleFromFile(store.Engine, filename)
 	utils.Check(err)
 
@@ -32,4 +36,12 @@ func LoadHelloWasm() {
 
 func LoadInputWasm() {
 	Load("input.wasm")
+}
+
+func LoadReadFile() {
+	Load("read_file.wasm")
+}
+
+func LoadSimpleInputWasm() {
+	Load("simple_input.wat")
 }
