@@ -6,14 +6,20 @@ import (
 	"sync"
 )
 
-func main() {
-	num := 1
+func run(workload func(), concurrent int) {
+	if concurrent <= 0 {
+		concurrent = 1
+	}
 	wg := &sync.WaitGroup{}
-	wg.Add(num)
+	wg.Add(concurrent)
 
-	for i := 0; i < num; i++ {
-		go handlers.Handle(wg, handlers.LoadSimpleInputWasm)
+	for i := 0; i < concurrent; i++ {
+		go handlers.Handle(wg, workload)
 	}
 	wg.Wait()
 	fmt.Println("\nfinish!")
+}
+
+func main() {
+	run(handlers.LoadFdStatWasm, 1)
 }

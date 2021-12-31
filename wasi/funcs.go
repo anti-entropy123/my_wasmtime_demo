@@ -2,11 +2,12 @@ package wasi
 
 import (
 	"fmt"
+	"myDir/demo/errs"
 	"myDir/demo/utils"
+	"os"
 	"reflect"
 	"runtime"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"github.com/bytecodealliance/wasmtime-go"
@@ -129,6 +130,23 @@ func getFdFdstatGet(
 		),
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdFdtatGet!")
+			if len(v) != 2 {
+				return nil, errs.NewBadParamsErr()
+			}
+			fd := v[0].I32()
+			memory := c.GetExport("memory").Memory()
+			baseAddr := memory.Data(store)
+			FdStatRetAddr := utils.AddrOffset(baseAddr, v[1].I32())
+			FdStatRet := (*FdStat)(FdStatRetAddr)
+
+			file := os.NewFile(uintptr(utils.GetFdHandle(fd)), "_temp_fd_for_fdstat_get")
+			fileStat, err := file.Stat()
+			if err != nil {
+				return nil, wasmtime.NewTrap(err.Error())
+			}
+			*FdStatRet = *NewFdStat(fileStat)
+			
+			fmt.Printf("FdStatRet: %+v\n", (*FdStat)(FdStatRetAddr))
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
 	)
@@ -143,7 +161,6 @@ func getFdWrite(store wasmtime.Storelike) *wasmtime.Func {
 		),
 		func(caller *wasmtime.Caller, params []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdWrite!")
-			time.Sleep(100 * time.Millisecond)
 			fd := utils.GetFdHandle(params[0].I32())
 			iovsCnt := params[2].I32()
 			memory := caller.GetExport("memory").Memory()

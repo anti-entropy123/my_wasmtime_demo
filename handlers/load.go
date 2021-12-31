@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"myDir/demo/utils"
 	"myDir/demo/wasi"
+	"path/filepath"
 
 	"github.com/bytecodealliance/wasmtime-go"
 )
+
+const WASM_OBJECT_PATH = "wasm_object"
 
 func Load(filename string) {
 	engine := wasmtime.NewEngine()
@@ -14,7 +17,7 @@ func Load(filename string) {
 	wasiConfig.PreopenDir(".", "/")
 	store := wasmtime.NewStore(engine)
 	store.SetWasi(wasiConfig)
-	module, err := wasmtime.NewModuleFromFile(store.Engine, filename)
+	module, err := wasmtime.NewModuleFromFile(store.Engine, filepath.Join(WASM_OBJECT_PATH, filename))
 	utils.Check(err)
 
 	externs := []wasmtime.AsExtern{}
@@ -26,7 +29,7 @@ func Load(filename string) {
 	run := instance.GetExport(store, "_start").Func()
 	_, err = run.Call(store)
 	if err != nil && err.Error() != "exit" {
-		fmt.Printf("LoadHelloWasm fail! err=%+v\n", err)
+		fmt.Printf("load %s fail! err=%+v\n", filename, err)
 	}
 }
 
@@ -44,4 +47,8 @@ func LoadReadFile() {
 
 func LoadSimpleInputWasm() {
 	Load("simple_input.wat")
+}
+
+func LoadFdStatWasm() {
+	Load("fd_stat.wat")
 }
