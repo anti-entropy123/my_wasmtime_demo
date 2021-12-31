@@ -68,16 +68,13 @@ func getFdRead(
 				fmt.Printf("data Addr is %#08x\n", dataAddr)
 				dataSH := &reflect.SliceHeader{
 					Data: dataAddr,
-					Len:  int(iovec.Len),
+					Len:  0,
 					Cap:  int(iovec.Len),
 				}
 				data := *(*[]byte)(unsafe.Pointer(dataSH))
 				right := utils.MinInt(index+int(iovec.Len), n)
 				fmt.Println("right", right, index+int(iovec.Len), n)
-				// data = append(data, buf[index:right]...)
-				for j := index; j < right; j ++ {
-					data[j-index] = buf[j]
-				} 
+				data = append(data, buf[index:right]...)
 				index += int(iovec.Len)
 				runtime.KeepAlive(dataSH)
 				fmt.Println("content is", data)
