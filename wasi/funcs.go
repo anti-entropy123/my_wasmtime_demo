@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"runtime"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/bytecodealliance/wasmtime-go"
@@ -145,6 +146,7 @@ func getFdWrite(store wasmtime.Storelike) *wasmtime.Func {
 		),
 		func(caller *wasmtime.Caller, params []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdWrite!")
+			time.Sleep(100 * time.Millisecond)
 			fd := utils.GetFdHandle(params[0].I32())
 			iovsCnt := params[2].I32()
 			memory := caller.GetExport("memory").Memory()
