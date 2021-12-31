@@ -7,13 +7,12 @@ import (
 )
 
 func main() {
-	// example.LinkWasi("input.wasm")
-	num := 10
+	num := 1
 	wg := &sync.WaitGroup{}
 	wg.Add(num)
 
 	for i := 0; i < num; i++ {
-		go handlers.Handle(wg, handlers.LoadHelloWasm)
+		go handlers.Handle(wg, handlers.LoadSimpleInputWasm)
 	}
 	wg.Wait()
 	fmt.Println("\nfinish!")
