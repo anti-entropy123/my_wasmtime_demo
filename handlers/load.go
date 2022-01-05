@@ -13,10 +13,7 @@ const WASM_OBJECT_PATH = "wasm_object"
 
 func Load(filename string) {
 	engine := wasmtime.NewEngine()
-	wasiConfig := wasmtime.NewWasiConfig()
-	wasiConfig.PreopenDir(".", "/")
 	store := wasmtime.NewStore(engine)
-	store.SetWasi(wasiConfig)
 	module, err := wasmtime.NewModuleFromFile(store.Engine, filepath.Join(WASM_OBJECT_PATH, filename))
 	utils.Check(err)
 
@@ -46,9 +43,15 @@ func LoadReadFile() {
 }
 
 func LoadSimpleInputWasm() {
+
+
 	Load("simple_input.wat")
 }
 
 func LoadFdStatWasm() {
 	Load("fd_stat.wat")
+}
+
+func LoadSignal() {
+	Load("handle_signal.wasm")
 }
