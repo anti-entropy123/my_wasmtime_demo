@@ -144,8 +144,9 @@ func getFdFdstatGet(
 			if err != nil {
 				return nil, wasmtime.NewTrap(err.Error())
 			}
+			fmt.Printf("FileInfo.Sys(): %+v, %+v\n", fileStat.Sys(), reflect.TypeOf(fileStat.Sys()))
 			*FdStatRet = *NewFdStat(fileStat)
-			
+
 			fmt.Printf("FdStatRet: %+v\n", (*FdStat)(FdStatRetAddr))
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},

@@ -48,7 +48,11 @@ func NewFiletypeByMode(fileMode fs.FileMode) filetype {
 type fdflag uint16
 
 const (
-	_append fdflag = iota
+	_append fdflag = 1 << iota
+	_dsync
+	_nonblock
+	_rsync
+	_sync
 )
 
 type right uint8
