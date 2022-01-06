@@ -1,7 +1,9 @@
 import sys
 import os
 
-link = False
+link = True
+#cc = 'emcc'
+cc = 'clang'
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
@@ -18,9 +20,7 @@ if __name__ == '__main__':
         source_file = os.path.join(root_path, c_source_dir, filename)
         target_wasm_file = os.path.join(root_path, wasm_object_dir, pure_filename) + f"{'.object' if not link else ''}.wasm"
         target_wat_file = os.path.join(root_path, wasm_object_dir, pure_filename) + f"{'.object' if not link else ''}.wat"
-        cmd = f'emcc {source_file} {"-c" if not link else ""} --profiling-funcs -s WASM=1 -Oz -o {target_wasm_file}'
-        print(cmd)
-        print(os.popen(cmd).read())
-        cmd = f'wasm2wat {target_wasm_file} -o {target_wat_file}'
+        options = "-c" if not link else " " + "--profiling-funcs -s WASM=1" if cc == "emcc" else "--sysroot=/usr/wasi-sysroot"
+        cmd = f'{cc} {source_file} {options} {options} -Oz -o {target_wasm_file} && wasm2wat {target_wasm_file} -o {target_wat_file}'
         print(cmd)
         print(os.popen(cmd).read())

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"myDir/demo/example"
 	"myDir/demo/handlers"
 	"sync"
 )
@@ -21,5 +22,9 @@ func run(workload func(), concurrent int) {
 }
 
 func main() {
-	run(handlers.LoadReadFile, 1)
+	example.GcdFromWat()
+	// if len(os.Args) == 2 {
+	// 	handlers.Load(os.Args[1])
+	// }
+	// run(handlers.LoadReadFile, 1)
 }
