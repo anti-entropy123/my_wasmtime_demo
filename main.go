@@ -21,5 +21,5 @@ func run(workload func(), concurrent int) {
 }
 
 func main() {
-	run(handlers.LoadFdStatWasm, 1)
+	run(handlers.LoadReadFile, 1)
 }
