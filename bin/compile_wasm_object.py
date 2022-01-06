@@ -1,7 +1,7 @@
 import sys
 import os
 
-link = True
+link = False
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
