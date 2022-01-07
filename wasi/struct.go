@@ -72,3 +72,25 @@ func NewFdStat(fileInfo fs.FileInfo) *FdStat {
 		fsRightsInheriting: 0,
 	}
 }
+
+type Preopentype uint8
+
+const (
+	PREOPENTYPE_DIR Preopentype = 0
+)
+
+type Prestat_dir struct {
+	PrNameLen int32
+}
+
+type Prestat struct {
+	tag Preopentype
+	u   Prestat_dir
+}
+
+func NewPrestat(tag Preopentype, u Prestat_dir) Prestat {
+	return Prestat{
+		tag: tag,
+		u:   u,
+	}
+}

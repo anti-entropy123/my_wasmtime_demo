@@ -16,7 +16,6 @@ func Load(filename string) {
 	store := wasmtime.NewStore(engine)
 	module, err := wasmtime.NewModuleFromFile(store.Engine, filepath.Join(WASM_OBJECT_PATH, filename))
 	utils.Check(err)
-	
 	externs := []wasmtime.AsExtern{}
 	for _, v := range module.Type().Imports() {
 		externs = append(externs, wasi.GetWasmFunc(store, *v.Name()))

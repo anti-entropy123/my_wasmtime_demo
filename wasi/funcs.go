@@ -2,7 +2,7 @@ package wasi
 
 import (
 	"fmt"
-	"myDir/demo/errs"
+	"myDir/demo/consts"
 	"myDir/demo/utils"
 	"os"
 	"os/exec"
@@ -82,17 +82,19 @@ func getFdWrite(store wasmtime.Storelike) *wasmtime.Func {
 		),
 		func(caller *wasmtime.Caller, params []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdWrite!")
-			fd := utils.GetFdHandle(params[0].I32())
-			iovsCnt := params[2].I32()
-			memory := caller.GetExport("memory").Memory()
-			baseAddr := memory.Data(store)
-			iovsSH := &reflect.SliceHeader{
-				Data: uintptr(utils.AddrOffset(baseAddr, params[1].I32())),
-				Len:  int(iovsCnt),
-				Cap:  int(iovsCnt),
-			}
-			iovsList := *(*[]Iovec)(unsafe.Pointer(iovsSH))
-			data := []byte{}
+			var (
+				fd       = utils.GetFdHandle(params[0].I32())
+				iovsCnt  = params[2].I32()
+				memory   = caller.GetExport("memory").Memory()
+				baseAddr = memory.Data(store)
+				iovsSH   = &reflect.SliceHeader{
+					Data: uintptr(utils.AddrOffset(baseAddr, params[1].I32())),
+					Len:  int(iovsCnt),
+					Cap:  int(iovsCnt),
+				}
+				iovsList = *(*[]Iovec)(unsafe.Pointer(iovsSH))
+				data     = []byte{}
+			)
 			for _, iovs := range iovsList {
 				fmt.Println("write iovs: ", iovs)
 				if !(iovs.Len > 0) {
@@ -179,22 +181,21 @@ func getFdFdstatGet(
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdFdtatGet!")
 			if len(v) != 2 {
-				return nil, errs.NewBadParamsErr()
+				return nil, consts.NewBadParamsErr()
 			}
-			fd := v[0].I32()
-			memory := c.GetExport("memory").Memory()
-			baseAddr := memory.Data(store)
-			FdStatRetAddr := utils.AddrOffset(baseAddr, v[1].I32())
-			FdStatRet := (*FdStat)(FdStatRetAddr)
-
-			file := os.NewFile(uintptr(utils.GetFdHandle(fd)), "_temp_fd_for_fdstat_get")
+			var (
+				memory        = c.GetExport("memory").Memory()
+				fd            = utils.GetFdHandle(v[0].I32())
+				FdStatRetAddr = utils.AddrOffset(memory.Data(store), v[1].I32())
+				file          = os.NewFile(uintptr(fd), "_temp_fd_for_fdstat_get")
+				FdStatRet     = (*FdStat)(FdStatRetAddr)
+			)
 			fileStat, err := file.Stat()
 			if err != nil {
 				return nil, wasmtime.NewTrap(err.Error())
 			}
 			fmt.Printf("FileInfo.Sys(): %+v, %+v\n", fileStat.Sys(), reflect.TypeOf(fileStat.Sys()))
 			*FdStatRet = *NewFdStat(fileStat)
-
 			fmt.Printf("FdStatRet: %+v\n", (*FdStat)(FdStatRetAddr))
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
@@ -230,28 +231,46 @@ func getFdPrestatGet(
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdPrestatGet!")
 			if len(v) != 2 {
-				return nil, errs.NewBadParamsErr()
+				return nil, consts.NewBadParamsErr()
 			}
+			var (
+				memory  = c.GetExport("memory").Memory()
+				fd      = utils.GetFdHandle(v[0].I32())
+				bufAddr = utils.AddrOffset(memory.Data(store), v[1].I32())
+			)
 			fmt.Printf("the fd int is=%d\n", v[0].I32())
-			fd := utils.GetFdHandle(v[0].I32())
 			pid := os.Getpid()
-			cmd := exec.Command("lsof", "-p", strconv.FormatInt(int64(pid), 10))
+			cmd := exec.Command("ls", "-lh", "/proc/"+strconv.FormatInt(int64(pid), 10)+"/fd/"+strconv.FormatInt(int64(fd), 10))
 			fmt.Println("exec cmd: ", cmd.String())
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				fmt.Printf("exec fail, err=%+v\n", err)
-				return nil, wasmtime.NewTrap(err.Error())
+				// return nil, wasmtime.NewTrap(err.Error())
 			}
 			fmt.Printf("current fd have:\n %s\n", string(out))
 			fmt.Println("fd is", fd)
-			file := os.NewFile(uintptr(fd), "_temp_fd_for_fdstat_get")
+			file := os.NewFile(uintptr(fd), ".")
 			fileStat, err := file.Stat()
 			if err != nil {
-				return nil, wasmtime.NewTrap(err.Error())
+				return []wasmtime.Val{wasmtime.ValI32(consts.Badf)}, nil
 			}
+			prestat := (*Prestat)(bufAddr)
 			if fileStat.IsDir() {
-				fmt.Printf("the fd=%d, is a dir, it's info=%+v", v[0].I32(), fileStat)
+				fmt.Printf("the fd=%d, is a dir, it's info=%+v\n", v[0].I32(), fileStat)
+				// entries, err := file.Readdirnames(0)
+				// if err != nil {
+				// 	fmt.Printf("read dir content fail, err=%+v\n", err)
+				// 	return nil, wasmtime.NewTrap(err.Error())
+				// }
+				// for i, entry := range entries {
+				// 	fmt.Printf("[%d] dir entry name: %s\n", i, entry)
+				// }
+				prestat.tag = PREOPENTYPE_DIR
+			} else {
+				prestat.tag = Preopentype(1)
 			}
+
+			prestat.u.PrNameLen = int32(len(fileStat.Name()))
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
 	)
@@ -268,6 +287,31 @@ func getFdPrestatDirName(
 		),
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdPrestatDirName!")
+			if len(v) != 3 {
+				return nil, consts.NewBadParamsErr()
+			}
+			memory := c.GetExport("memory").Memory()
+			fmt.Printf("the fd int is=%d\n", v[0].I32())
+			fd := utils.GetFdHandle(v[0].I32())
+			bufAddr := utils.AddrOffset(memory.Data(store), v[1].I32())
+			bufSize := int(v[2].I32())
+			fmt.Println("fd is", fd)
+			file := os.NewFile(uintptr(fd), ".")
+			fileStat, err := file.Stat()
+			if err != nil {
+				return nil, wasmtime.NewTrap(err.Error())
+			}
+			if len(fileStat.Name()) > bufSize {
+				return nil, wasmtime.NewTrap("length more than buffer size")
+			}
+			bufferSH := &reflect.SliceHeader{
+				Data: uintptr(bufAddr),
+				Len:  0,
+				Cap:  bufSize,
+			}
+			buffer := *(*[]byte)(unsafe.Pointer(bufferSH))
+			buffer = append(buffer, []byte(fileStat.Name())...)
+			fmt.Println("the first letter is: ", string([]byte{*(*byte)(bufAddr)}))
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
 	)
@@ -279,7 +323,7 @@ func getPathOpen(
 	return wasmtime.NewFunc(
 		store,
 		wasmtime.NewFuncType(
-			[]*wasmtime.ValType{WasmI32, WasmI32, WasmI32, WasmI32,WasmI32, WasmI64, WasmI64, WasmI32, WasmI32},
+			[]*wasmtime.ValType{WasmI32, WasmI32, WasmI32, WasmI32, WasmI32, WasmI64, WasmI64, WasmI32, WasmI32},
 			[]*wasmtime.ValType{WasmI32},
 		),
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
