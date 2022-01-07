@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"myDir/demo/example"
 	"myDir/demo/handlers"
 	"sync"
 )
@@ -22,6 +21,6 @@ func run(workload func(), concurrent int) {
 }
 
 func main() {
-	example.LinkWasi("read_file.wasm")
-	// run(handlers.LoadReadFile, 1)
+	// example.LinkWasi("read_file.wasm")
+	run(handlers.LoadReadFile, 1)
 }

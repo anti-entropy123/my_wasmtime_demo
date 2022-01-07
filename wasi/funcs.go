@@ -5,8 +5,10 @@ import (
 	"myDir/demo/errs"
 	"myDir/demo/utils"
 	"os"
+	"os/exec"
 	"reflect"
 	"runtime"
+	"strconv"
 	"syscall"
 	"unsafe"
 
@@ -210,6 +212,7 @@ func getFdFdstatSetFlags(
 		),
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdFdstatSetFlags!")
+			// TODO
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
 	)
@@ -226,6 +229,29 @@ func getFdPrestatGet(
 		),
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
 			fmt.Println("FdPrestatGet!")
+			if len(v) != 2 {
+				return nil, errs.NewBadParamsErr()
+			}
+			fmt.Printf("the fd int is=%d\n", v[0].I32())
+			fd := utils.GetFdHandle(v[0].I32())
+			pid := os.Getpid()
+			cmd := exec.Command("lsof", "-p", strconv.FormatInt(int64(pid), 10))
+			fmt.Println("exec cmd: ", cmd.String())
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				fmt.Printf("exec fail, err=%+v\n", err)
+				return nil, wasmtime.NewTrap(err.Error())
+			}
+			fmt.Printf("current fd have:\n %s\n", string(out))
+			fmt.Println("fd is", fd)
+			file := os.NewFile(uintptr(fd), "_temp_fd_for_fdstat_get")
+			fileStat, err := file.Stat()
+			if err != nil {
+				return nil, wasmtime.NewTrap(err.Error())
+			}
+			if fileStat.IsDir() {
+				fmt.Printf("the fd=%d, is a dir, it's info=%+v", v[0].I32(), fileStat)
+			}
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
 	)
@@ -257,7 +283,7 @@ func getPathOpen(
 			[]*wasmtime.ValType{WasmI32},
 		),
 		func(c *wasmtime.Caller, v []wasmtime.Val) ([]wasmtime.Val, *wasmtime.Trap) {
-			fmt.Println("FdPathOpen!")
+			fmt.Println("PathOpen!")
 			return []wasmtime.Val{wasmtime.ValI32(0)}, nil
 		},
 	)
