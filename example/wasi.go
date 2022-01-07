@@ -2,19 +2,22 @@ package example
 
 import (
 	"fmt"
-	"io/ioutil"
 	"myDir/demo/utils"
+	"os"
+	"path/filepath"
 
 	"github.com/bytecodealliance/wasmtime-go"
 )
 
 var outFile = "std.txt"
 
+const wasm_object_path = "wasm_object"
+
 func LinkWasi(filename string) {
 	engine := wasmtime.NewEngine()
 	// Create our module
 	// wasm, err := wasmtime.Wat2Wasm(wasiWat)
-	module, err := wasmtime.NewModuleFromFile(engine, filename)
+	module, err := wasmtime.NewModuleFromFile(engine, filepath.Join(wasm_object_path, filename))
 	utils.Check(err)
 	// module, err := wasmtime.NewModule(engine, wasm)
 	// utils.Check(err)
@@ -27,21 +30,24 @@ func LinkWasi(filename string) {
 	// Configure WASI imports to write stdout into a file, and then create
 	// a `Store` using this wasi configuration.
 	wasiConfig := wasmtime.NewWasiConfig()
-	// wasiConfig.SetStdoutFile(outFile)
+	wasiConfig.PreopenDir(".", ".")
+	fmt.Println(os.Stdout.Name())
+	wasiConfig.SetStdoutFile(os.Stdout.Name())
 	store := wasmtime.NewStore(engine)
 	store.SetWasi(wasiConfig)
 	instance, err := linker.Instantiate(store, module)
 	utils.Check(err)
-
 	// Run the function
 	nom := instance.GetExport(store, "_start").Func()
 	_, err = nom.Call(store)
-	fmt.Println("run link_wasi fail, err=", err)
+	if err != nil {
+		fmt.Println("run link_wasi fail, err=", err)
+	}
 	// utils.Check(err)
-	out, err := ioutil.ReadFile(outFile)
+	// out, err := ioutil.ReadFile(outFile)
 	utils.Check(err)
 
-	fmt.Println(string(out))
+	// fmt.Println(string(out))
 }
 
 var wasiWat string = `

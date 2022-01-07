@@ -22,9 +22,6 @@ func run(workload func(), concurrent int) {
 }
 
 func main() {
-	example.GcdFromWat()
-	// if len(os.Args) == 2 {
-	// 	handlers.Load(os.Args[1])
-	// }
+	example.LinkWasi("read_file.wasm")
 	// run(handlers.LoadReadFile, 1)
 }
