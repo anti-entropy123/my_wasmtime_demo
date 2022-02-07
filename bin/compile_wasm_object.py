@@ -2,7 +2,6 @@ import sys
 import os
 
 link = True
-#cc = 'emcc'
 cc = 'clang'
 
 if __name__ == '__main__':
